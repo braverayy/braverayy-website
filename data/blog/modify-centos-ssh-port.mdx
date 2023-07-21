@@ -1,0 +1,44 @@
+---
+title: '修改 CentOS 默认的 SSH 端口'
+date: '2022-09-15'
+tags: ['linux', 'centos']
+---
+
+Linux 的默认 SSH 端口是 22。这个端口是在安装操作系统时自动配置的。因此，如果 SSH 端口没有被改变，黑客可以对你的服务器进行暴力破解。在这篇文章中，我将解释如何配置一个新的 SSH 端口来保护你的服务器。
+
+> Environment: CentOS 7
+
+### 1. 备份 SSH 配置文件
+
+如果你想恢复原始设置，或者在改变 SSH 端口时发生错误，可以使用备份文件轻松恢复原始设置。
+
+```bash
+cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+```
+
+### 2. 修改默认端口
+
+```bash
+vi /etc/ssh/sshd_config
+```
+
+你可以通过查找关键字 "#Port 22" 来找到它。例如：将 "#Port 22" 改为 "Port 8080"，SSH 端口就会被修改为 8080。当然，你可以把端口号改成你想要的任何数字。
+
+### 3. 重新启动 sshd 服务
+
+```bash
+systemctl restart sshd
+```
+
+### 4. 开放端口
+
+如果你开启了防火墙，不要忘记在你的防火墙中打开新的端口。
+
+```bash
+firewall-cmd --premanent --add-port=2233/tcp
+firewall-cmd --reload
+```
+
+### 5. 在云服务商处开放端口
+
+一般云服务都会添加安全组，并设置入网规则，你需要在对应的位置开放新的端口。

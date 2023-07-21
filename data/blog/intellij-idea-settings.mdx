@@ -1,0 +1,117 @@
+---
+title: '推荐的 IntelliJ IDEA 设置'
+date: '2023-04-19'
+tags: [intellij-idea]
+---
+
+这些是我对 IntelliJ IDEA 必须要做的设置，其中夹杂着一些有用的提示。然而，我建议你自己去浏览设置对话框中的所有选项，你将会对 IntelliJ IDEA 变得更加熟悉。
+
+> IntelliJ IDEA version: 2022.3
+
+## 如何更改设置
+
+在 IntelliJ IDEA 中，有几种方法可以改变设置。
+
+打开设置对话框，选择 File → Settings 或使用 Ctrl + Alt + S 快捷键。有时你甚至不需要打开设置对话框，使用 Ctrl + Shift + A 快捷键，然后输入设置名称。如果它是一个复选框选项，你可以按回车键来切换设置。
+
+然而，有些设置只适用于当前项目。要更改默认的项目设置，选择 File → Other Settings → Default settings。
+
+## 取消更新检查
+
+Settings → Appearance & Behavior → System Settings → Updates
+
+Uncheck `Check IDE update for:`
+
+## 不在启动时自动打开项目
+
+Settings → Appearance & Behavior → System Settings
+
+取消勾选 "Project " 部分的 "Reopen projects on startup"。
+
+## 代理设置
+
+Settings → Appearance & Behavior → System Settings → Http Proxy
+
+![idea-http-proxy](/static/images/blog/idea/idea-http-proxy.png)
+
+## 在状态栏中显示当前 IDEA 的内存使用情况
+
+Settings -&gt; Appearance & Behavior → Appearance → Show memory indicator
+
+激活该选项可以在状态栏的右下角显示当前 IDE 的堆级别和内存使用情况。此外，你可以点击这个小部件来运行垃圾收集器。
+
+## 配置 Tab
+
+### 1. 在多行中显示选项卡
+
+Settings → Editor → General → Editor Tabs
+
+取消勾选 "Show tabs in one row"。
+
+### 2. 修改选项卡数量限制
+
+Settings → Editor → General → Editor Tabs
+
+标签在默认情况下最多显示 10 个。你可以在 "Close Policy " 部分修改 "Tab limit"，以增加要显示的标签数量。
+
+### 3. 修改选项卡关闭策略
+
+Settings → Editor → General → Editor Tabs
+
+关闭选项卡将默认打开左边的选项卡，你也可以选择打开最近的选项卡。在 "Closing Policy "部分，选中 "When the current tab is closed, activate:" 的 "Most recently opened tab"。
+
+## 代码提示不区分大小写
+
+Settings → Editor → General → Code Completion
+
+勾选 "Match case"。
+
+## 设置文件换行符为 LF
+
+Settings → Editor → Code style
+
+将 "General" 中的 "Line separator" 设置为 "Unix and macOS (\\n)"。
+
+## 设置文件编码格式为 UTF-8
+
+Settings → Editor → File Encodings
+
+![idea-file-encodings](/static/images/blog/idea/idea-file-encodings.png)
+
+## 导包优化
+
+Settings → Editor → General → Auto Import
+
+### 1. 自动导包
+
+当编辑代码时，如果只有一个名称匹配的可导入声明，就会自动添加导入
+
+勾选 "Java "部分中的 "Add unambigouts imports on the fly"。
+
+### 2. 移除未使用的导入
+
+移除未使用的导入，并根据代码风格设置重新排序。
+
+勾选 "Java "部分中的 "Optimize import on the fly"。
+
+## 在方法之间添加分割线
+
+Settings → Editor → General → Appearance
+
+勾选 "Show method separators"。
+
+## 优化代码注释缩进
+
+默认情况下，所有使用 ctrl +/ 快捷方式的注释都从行首开始，没有缩进。
+
+### 1. Java
+
+Settings → Editor → Code Style → Java → Code Generation
+
+![idea-codestyle-java-comment](/static/images/blog/idea/idea-codestyle-java-comment.png)
+
+### 2. XML
+
+Settings → Editor → Code Style → XML → Code Generation
+
+![idea-codestyle-xml-comment](/static/images/blog/idea/idea-codestyle-xml-comment.png)

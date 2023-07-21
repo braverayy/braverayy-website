@@ -1,0 +1,159 @@
+---
+title: '使用 Jackson ContextualSerializer 实现 Web 响应脱敏'
+date: '2023-05-06'
+tags: ['jackson']
+---
+
+web 项目时常常有一些敏感数据，如手机号、身份证号等等。在 web 响应中，我们需要对这些敏感数据进行脱敏。本文介绍如何使用 Jackson ContextualSerializer 实现脱敏。
+
+### JsonSerializer
+
+对象中的属性进行脱敏，我们首先想到的就是自定义 JsonSerializer。
+
+```java
+public class DesensitizedSerializer extends StdSerializer<String> {
+
+    protected DesensitizedSerializer() {
+        super(String.class);
+    }
+
+    @Override
+    public void serialize(String value, JsonGenerator gen, SerializerProvider provider)
+        throws IOException {
+        gen.writeString(DesensitizedUtils.desValue(value, "*", 3, 4));
+    }
+}
+```
+
+DesensitizedSerializer 负责对属性脱敏，逻辑是保留值的前 3 位和后 4 位，其余位使用 `*` 号掩盖。
+
+接下来让我们将 DesensitizedSerializer 应用到 User 的 mobile 属性上。
+
+```java
+public class User {
+
+    @JsonSerialize(using = DesensitizedSerializer.class)
+    private String mobile;
+    private Integer age;
+}
+```
+
+这样虽然能够脱敏手机号（mobile），但往往我们有许多不同业务类型的字段需要脱敏，并且它们的脱敏规则各不相同。这时候我们就需要使用 Jackson ContextualSerializer 传递上下信息，构建对应的 JsonSerializer。
+
+### ContextualSerializer
+
+首先我们创建 Desensitized 枚举类，用于保存不同属性的上下信息。
+
+```java
+@Target({ElementType.FIELD})
+@Retention(RetentionPolicy.RUNTIME)
+@JacksonAnnotationsInside
+@JsonSerialize(using = DesensitizedSerializer.class)
+public @interface Desensitized {
+
+    /**
+     * 脱敏数据类型
+     */
+    DesensitizedType type() default DesensitizedType.CUSTOMER;
+
+    /**
+     * 掩盖字符
+     */
+    String maskChar() default "*";
+
+    /**
+     * 保留字符串的前多少长度
+     * 当 type =  DesensitizedType.CUSTOMER 时，prefixNoMaskLen 才有效
+     */
+    int prefixNoMaskLen() default 0;
+
+    /**
+     * 保留字符串的后多少长度
+     * 当 type =  DesensitizedType.CUSTOMER 时，suffixNoMaskLen 才有效
+     */
+    int suffixNoMaskLen() default 0;
+}
+```
+
+通过 Desensitized 构建 DesensitizedSerializer ，要想在 DesensitizedSerializer 中获取注解属性值，需要实现 ContextualSerializer。
+
+```java
+public class DesensitizedSerializer extends StdSerializer<String> implements ContextualSerializer {
+
+    private Desensitized desensitized;
+
+    public DesensitizedSerializer() {
+        super(String.class);
+    }
+
+    public DesensitizedSerializer(Desensitized desensitized) {
+        super(String.class);
+        this.desensitized = desensitized;
+    }
+
+    @Override
+    public JsonSerializer<?> createContextual(SerializerProvider serializerProvider,
+                                              BeanProperty beanProperty)
+        throws JsonMappingException {
+        if (beanProperty == null) {
+            return serializerProvider.findNullValueSerializer(null);
+        }
+        if (beanProperty.getType().getRawClass() != String.class) {
+            return serializerProvider.findValueSerializer(beanProperty.getType(), beanProperty);
+        }
+        Desensitized desensitized = beanProperty.getAnnotation(Desensitized.class);
+        if (desensitized == null) {
+            desensitized = beanProperty.getContextAnnotation(Desensitized.class);
+        }
+        if (desensitized == null) {
+            return serializerProvider.findValueSerializer(beanProperty.getType(), beanProperty);
+        }
+        return new DesensitizedSerializer(desensitized);
+    }
+}
+```
+
+注意：必须保留无参构造器。Jackson 在通过 `@JsonSerialize(using = DesensitizedSerializer.class)` 构造 DesensitizedSerializer 时需要使用无参构造器。
+
+接下来的就简单了，让我们完善下序列化方法（serialize）。
+
+```java
+public class DesensitizedSerializer extends StdSerializer<String> implements ContextualSerializer {
+    
+    @Override
+    public void serialize(String value, JsonGenerator gen, SerializerProvider provider)
+        throws IOException {
+        String desValue;
+        switch (desensitized.type()) {
+            case MOBILE:
+                desValue = DesensitizedUtils.mobile(value, desensitized.maskChar());
+                break;
+            case ID_CARD:
+                desValue = DesensitizedUtils.idCard(value, desensitized.maskChar());
+                break;
+            case CUSTOM:
+                desValue = DesensitizedUtils.desValue(value, desensitized.maskChar(),
+                    desensitized.prefixNoMaskLen(), desensitized.suffixNoMaskLen());
+                break;
+            default:
+                throw new UnsupportedEncodingException(
+                    "Not support, DesensitizeType = " + desensitized.type());
+        }
+        gen.writeString(desValue);
+    }
+}
+```
+
+### 使用
+
+```java
+public class User {
+
+    @Desensitized(maskChar = "#", prefixNoMaskLen = 4, suffixNoMaskLen = 4)
+    private String username;
+
+    @Desensitized(type = DesensitizedType.MOBILE)
+    private String mobile;
+    private Integer age;
+}
+```

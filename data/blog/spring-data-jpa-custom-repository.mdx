@@ -1,0 +1,125 @@
+---
+title: '如何在 Spring Data JPA 中的自定义 Repository'
+date: '2022-11-03'
+tags: ['spring', 'spring-data-jpa']
+---
+
+Spring Data JPA 提供了许多常见的 Repository 接口，如 CrudRepository、PagingAndSortingRepository、JpaRepository 等。这些接口很强大，但很多情况下，我们仍然需要定制查询或方法来满足期望。
+
+### 自定义 Repository
+
+首先定义一个继承自 JpaRepository 的 CustomRepository，并编写我们想要扩展的方法。
+
+```java
+@NoRepositoryBean
+public interface CustomRepository<T, ID> extends JpaRepository<T, ID> {
+
+    List<T> findByIdIn(Iterable<ID> ids);
+
+    void deleteByIdIn(Iterable<ID> ids);
+}
+```
+
+`@NoRepositoryBean` 用于通知 Spring 不要实例化 CustomRepository，因为 CustomRepository 是作为一个中间接口来派生具体的 Repository 接口的。
+
+接下来，创建一个 CustomRepository 的实现类，实现扩展方法。
+
+```java
+public class CustomRepositoryImpl<T, ID> extends SimpleJpaRepository<T, ID> implements CustomRepository<T, ID> {
+
+    private final EntityManager em;
+    private final JpaEntityInformation<T, ?> entityInformation;
+
+    public CustomRepositoryImpl(JpaEntityInformation<T, ?> entityInformation, EntityManager entityManager) {
+        super(entityInformation, entityManager);
+        this.em = entityManager;
+        this.entityInformation = entityInformation;
+    }
+
+    @Override
+    public List<T> findByIdIn(Iterable<ID> ids) {
+        return findAllById(ids);
+    }
+
+    @Override
+    public void deleteById(ID id) {
+        Assert.notNull(id, "Id must not be null!");
+
+        CriteriaBuilder builder = em.getCriteriaBuilder();
+        CriteriaDelete<T> delete = builder.createCriteriaDelete(getDomainClass());
+        Root<T> root = delete.from(getDomainClass());
+        delete.where(builder.equal(root.get(entityInformation.getIdAttribute()), id));
+        em.createQuery(delete).executeUpdate();
+    }
+
+    @Transactional
+    @Override
+    public void deleteByIdIn(Iterable<ID> ids) {
+        Assert.notNull(ids, "Ids must not be null!");
+
+        if (ids.iterator().hasNext()) {
+            CriteriaBuilder builder = em.getCriteriaBuilder();
+            CriteriaDelete<T> delete = builder.createCriteriaDelete(getDomainClass());
+            Root<T> root = delete.from(getDomainClass());
+            delete.where(getIdsPredicate(builder, root, ids));
+            em.createQuery(delete).executeUpdate();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    protected Predicate getIdsPredicate(CriteriaBuilder builder, Root<T> root, Iterable<ID> ids) {
+        Path<ID> path = (Path<ID>) root.get(entityInformation.getIdAttribute());
+        CriteriaBuilder.In<ID> inPredicate = builder.in(path);
+        ids.forEach(inPredicate::value);
+        return inPredicate;
+    }
+}
+```
+
+### 配置
+
+最后我们可以用 `@EnableJpaRepositories` 在主类上指定新的存储库基类。
+
+```java
+@EnableJpaRepositories(repositoryBaseClass = CustomRepositoryImpl.class)
+@SpringBootApplication
+public class JpaExamplesApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(JpaExamplesApplication.class, args);
+    }
+}
+```
+
+### 用例
+
+我们的 Repository 接口没有继承自 JpaRepository，而是继承自 CustomRepository
+
+```java
+public interface UserRepository<User, Long> extends CustomRepository<User, Long> {
+}
+```
+
+接下来，我们测试我们的自定义方法
+
+```java
+@SpringBootTest
+class BaseRepositoryTests {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void deleteByIdIn_test() {
+        userRepository.deleteByIdIn(Arrays.asList(1L, 2L));
+    }
+}
+```
+
+开启 SQL 打印：
+
+```properties
+spring.jpa.show-sql=true
+```
+
+控制台成功输出：Hibernate: delete from user where id in (1 , 2)

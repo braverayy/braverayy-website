@@ -1,0 +1,106 @@
+---
+title: 'Jackson 自定义 Null 值处理'
+date: '2023-05-03'
+tags: ['jackson']
+---
+
+在使用 Jackson 序列化 Response 时，如果属性值是 Null 会原样显示。在协同开发的时候对前端小伙伴来说，有点不友好。对于追求完美的我们，自然是不能接受的。本文将介绍一种将 Null 序列化成空字符串或空数组的方法。
+
+### NullValueSerializer
+
+Jackson 通过 NullValueSerializer 序列化 Null 值，使用 SerializerProvider 的 findNullValueSerializer 获取 Serializer，默认采用 JsonGenerator.writeNull 写入空值。
+
+```java
+    public JsonSerializer<Object> findNullValueSerializer(BeanProperty property)
+        throws JsonMappingException {
+        return _nullValueSerializer;
+    }
+```
+
+在使用 SerializerProvider findNullValueSerializer 方法前，Jackson 会先应用 AnnotationIntrospector 对序列化对象上的注解解析生效，如 JsonIgnore 就是使用 AnnotationIntrospector 中 hasIgnoreMarker 实现属性过滤的。AnnotationIntrospector 中提供了 findNullSerializer 方法，我们可以自定义该方法来对 Null 值进行特殊处理。
+
+### AnnotationIntrospector
+
+我们可以继承其默认实现类 JacksonAnnotationIntrospector。
+
+```java
+public class CustomJacksonAnnotationIntrospector extends JacksonAnnotationIntrospector {
+
+    private static final long serialVersionUID = 886030387926352784L;
+
+    @Override
+    public Object findNullSerializer(Annotated a) {
+        JavaType type = a.getType();
+        if (type.isArrayType() || type.isCollectionLikeType()) {
+            return new NullArraySerializer();
+        } else if (String.class.isAssignableFrom(type.getRawClass())) {
+            return new NullStringSerializer();
+        }
+        return super.findNullSerializer(a);
+    }
+}
+```
+
+当属性类型是数组或集合时，使用 NullArraySerializer。当属性类型是 String 时，使用 NullStringSerializer。
+
+接下来的事情就简单了，让我们来完成 NullArraySerializer 和 NullStringSerializer 吧。
+
+```java
+public class NullArraySerializer extends StdSerializer<Object> {
+
+    private static final long serialVersionUID = 3009447509880038629L;
+
+    public NullArraySerializer() {
+        super(Object.class);
+    }
+
+    @Override
+    public void serialize(Object value, JsonGenerator gen, SerializerProvider serializers)
+        throws IOException {
+        gen.writeStartArray();
+        gen.writeEndArray();
+    }
+}
+
+public class NullStringSerializer extends StdSerializer<Object> {
+
+    private static final long serialVersionUID = 1642416278390328414L;
+
+    public NullStringSerializer() {
+        super(Object.class);
+    }
+
+    @Override
+    public void serialize(Object value, JsonGenerator gen, SerializerProvider provider)
+        throws IOException {
+        gen.writeString("");
+    }
+}
+```
+
+### 配置 ObjectMapper
+
+我们需要将自定义的 AnnotationIntrospector 注册到 ObjectMapper 中
+
+```java
+objectMapper.setAnnotationIntrospector(new CustomJacksonAnnotationIntrospector());
+```
+
+### 测试
+
+OK，接下来我们来测试下。
+
+```java
+    @Test
+    void testNull() throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.setAnnotationIntrospector(new CustomJacksonAnnotationIntrospector());
+
+        Demo demo = new Demo();
+        demo.setAge(10);
+        String jsonStr = objectMapper.writeValueAsString(demo);
+        assertThat(jsonStr).isEqualTo("{\"name\":\"\",\"age\":10}");
+    }
+```
+
+运行成功，万事大吉 ~

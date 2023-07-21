@@ -1,0 +1,19 @@
+---
+title: '接入国外第三方 Api 连接超时'
+date: '2023-03-09'
+tags: ['bugs', 'tips']
+---
+
+在通过 Spring Security OAuth2 集成 Google 时发现访问 Google API 连接超时：
+
+> \[invalid\_token\_response\] An error occurred while attempting to retrieve the OAuth 2.0 Access Token Response: I/O error on POST request for "https://www.googleapis.com/oauth2/v4/token": Connection timed out: connect; nested exception is java.net.ConnectException: Connection timed out: connect
+
+一番排除发现浏览器（有代理）访问 Google API 是正常的，而 IntelliJ IDEA Project 无法访问，确认是代理问题。
+
+解决方案：
+
+添加 VM options：-DsocksProxyHost=127.0.0.1 -DsocksProxyPort=7890
+
+如果还是不能生效，关闭 IDEA 代理
+
+![idea-proxy-closed](/static/images/blog/bugs/idea-proxy-closed.png)

@@ -1,0 +1,55 @@
+---
+title: '使用 Firewalld 保护 Docker'
+date: '2022-09-05'
+tags: ['docker', 'firewall']
+---
+
+Linux 中 Docker 操作 Iptables 规则来提供网络隔离。Firewalld 默认不工作，如果您想使用 Firewalld，您需要做以下调整。
+
+### 1. 重建 DOCKER-USER 链
+
+即使 DOCKER-USER 链已经存在，也需要删除并重新构建
+
+```bash
+firewall-cmd --permanent --direct --remove-chain ipv4 filter DOCKER-USER
+firewall-cmd --permanent --direct --remove-rules ipv4 filter DOCKER-USER
+firewall-cmd --permanent --direct --add-chain ipv4 filter DOCKER-USER
+```
+
+### 2. 添加 Iptables 规则
+
+```bash
+firewall-cmd --permanent --direct --add-rule ipv4 filter DOCKER-USER 0 -i docker0 -j ACCEPT -m comment --comment "allows incoming from docker"
+
+firewall-cmd --permanent --direct --add-rule ipv4 filter DOCKER-USER 0 -i docker0 -o eth0 -j ACCEPT -m comment --comment "allows docker to eth0"
+
+firewall-cmd --permanent --direct --add-rule ipv4 filter DOCKER-USER 0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT -m comment --comment "allows docker containers to connect to the outside world"
+
+firewall-cmd --permanent --direct --add-rule ipv4 filter DOCKER-USER 0 -j RETURN -s 172.17.0.0/16 -m comment --comment "allow internal docker communication"
+```
+
+### 3. 添加自定义规则
+
+```bash
+# 允许指定 ip 流量通过，你可以将 1.1.1.1 替换成需要通过的 ip
+firewall-cmd --permanent --direct --add-rule ipv4 filter DOCKER-USER 0 -s 1.1.1.1/32 -j ACCEPT
+
+# 允许指定 ip 访问指定端口
+firewall-cmd --permanent --direct --add-rule ipv4 filter DOCKER-USER 0 -p tcp -m multiport --dports 80,443 -s 1.1.1.1/32 -j ACCEPT
+
+# 拒绝其他流量
+firewall-cmd --permanent --direct --add-rule ipv4 filter DOCKER-USER 10 -j REJECT --reject-with icmp-host-unreachable -m comment --comment "reject all other traffic"
+```
+
+* 最后执行 **REJECT 规则**
+    
+* 不要为同一个规则写多个 IP 地址
+    
+
+### 4. 重新加载配置并验证
+
+重新加载配置：firewall-cmd --reload
+
+验证：iptables -L 或者 cat /etc/firewall/direct.xml。
+
+>如果在 Docker 运行时重新启动 Firewalld，Firewalld 将删除 DOCKER-USER。你需要确保重新启动 Firewalld 时 Docker 没有运行。
