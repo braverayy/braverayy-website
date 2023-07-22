@@ -2,6 +2,7 @@
 title: '使用 Firewalld 保护 Docker'
 date: '2022-09-05'
 tags: ['docker', 'firewall']
+summary: ''
 ---
 
 Linux 中 Docker 操作 Iptables 规则来提供网络隔离。Firewalld 默认不工作，如果您想使用 Firewalld，您需要做以下调整。
@@ -41,10 +42,8 @@ firewall-cmd --permanent --direct --add-rule ipv4 filter DOCKER-USER 0 -p tcp -m
 firewall-cmd --permanent --direct --add-rule ipv4 filter DOCKER-USER 10 -j REJECT --reject-with icmp-host-unreachable -m comment --comment "reject all other traffic"
 ```
 
-* 最后执行 **REJECT 规则**
-    
-* 不要为同一个规则写多个 IP 地址
-    
+- 最后执行 **REJECT 规则**
+- 不要为同一个规则写多个 IP 地址
 
 ### 4. 重新加载配置并验证
 
@@ -52,4 +51,4 @@ firewall-cmd --permanent --direct --add-rule ipv4 filter DOCKER-USER 10 -j REJEC
 
 验证：iptables -L 或者 cat /etc/firewall/direct.xml。
 
->如果在 Docker 运行时重新启动 Firewalld，Firewalld 将删除 DOCKER-USER。你需要确保重新启动 Firewalld 时 Docker 没有运行。
+> 如果在 Docker 运行时重新启动 Firewalld，Firewalld 将删除 DOCKER-USER。你需要确保重新启动 Firewalld 时 Docker 没有运行。

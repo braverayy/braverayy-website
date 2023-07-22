@@ -4,16 +4,20 @@ import Facebook from './facebook.svg'
 import Youtube from './youtube.svg'
 import Linkedin from './linkedin.svg'
 import Twitter from './twitter.svg'
+import Telegram from './telegram.svg'
+import Rss from './rss.svg'
 
 // Icons taken from: https://simpleicons.org/
 
 const components = {
   mail: Mail,
   github: Github,
-  facebook: Facebook,
-  youtube: Youtube,
-  linkedin: Linkedin,
+  telegram: Telegram,
   twitter: Twitter,
+  facebook: Facebook,
+  linkedin: Linkedin,
+  youtube: Youtube,
+  rss: Rss,
 }
 
 const SocialIcon = ({ kind, href, size = 8 }) => {

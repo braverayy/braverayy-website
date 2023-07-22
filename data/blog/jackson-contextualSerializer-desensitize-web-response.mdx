@@ -2,6 +2,7 @@
 title: '使用 Jackson ContextualSerializer 实现 Web 响应脱敏'
 date: '2023-05-06'
 tags: ['jackson']
+summary: ''
 ---
 
 web 项目时常常有一些敏感数据，如手机号、身份证号等等。在 web 响应中，我们需要对这些敏感数据进行脱敏。本文介绍如何使用 Jackson ContextualSerializer 实现脱敏。
@@ -119,7 +120,7 @@ public class DesensitizedSerializer extends StdSerializer<String> implements Con
 
 ```java
 public class DesensitizedSerializer extends StdSerializer<String> implements ContextualSerializer {
-    
+
     @Override
     public void serialize(String value, JsonGenerator gen, SerializerProvider provider)
         throws IOException {
