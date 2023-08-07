@@ -12,7 +12,7 @@
     "prepare": "husky install"
   },
   "dependencies": {
-    "@fontsource/inter": "4.5.2",
+    "@fontsource/inter": "4.5.15",
     "@fontsource/source-code-pro": "^5.0.5",
     "@mailchimp/mailchimp_marketing": "^3.0.80",
     "@next/bundle-analyzer": "^12.1.4",
